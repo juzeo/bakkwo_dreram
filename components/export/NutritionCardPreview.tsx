@@ -1,76 +1,88 @@
-import { DAILY_VALUE, WARNING_THRESHOLD } from '@/lib/nutrition'
+import { DAILY_VALUE } from '@/lib/nutrition'
 import { DisclaimerBanner } from '@/components/common/DisclaimerBanner'
 import { PartnerBadge } from '@/components/common/Badge'
 
-function StatusChip({ overThreshold }: { overThreshold: boolean }) {
+type NutrientSet = {
+  kcal: number; carbs: number; sugar: number; fat: number; saturatedFat: number; transFat: number
+  cholesterol: number; sodium: number; protein: number
+}
+
+function pct(value: number, key: keyof typeof DAILY_VALUE) {
+  return (value / DAILY_VALUE[key]) * 100
+}
+
+// 식품 등의 표시기준 별표 서식을 그대로 따르는 두 컬럼(100g당 / 1인분당) 영양정보 카드.
+function Row({
+  label, indent, unit, per100g, perServing, dvKey,
+}: {
+  label: string
+  indent?: boolean
+  unit: string
+  per100g: number
+  perServing: number
+  dvKey?: keyof typeof DAILY_VALUE // 없으면 %기준치 표시 안 함 (트랜스지방)
+}) {
   return (
-    <span className={`ml-2 rounded-full px-2 py-0.5 text-[11px] font-medium ${overThreshold ? 'bg-warning/20 text-warning-foreground' : 'bg-primary/10 text-primary'}`}>
-      {overThreshold ? '⚠️ 기준치 초과' : '적정'}
-    </span>
+    <div className={`grid grid-cols-[1fr_100px_100px] items-baseline border-b border-gray-200 py-1.5 text-sm ${indent ? 'pl-4 text-[13px] text-gray-600' : 'font-medium'}`}>
+      <span>{indent ? `– ${label}` : label}</span>
+      <span className="text-right tabular-nums">
+        {per100g.toFixed(1)}{unit}
+        {dvKey && <span className="ml-1 text-xs text-gray-500">{pct(per100g, dvKey).toFixed(0)}%</span>}
+      </span>
+      <span className="text-right font-semibold tabular-nums">
+        {perServing.toFixed(1)}{unit}
+        {dvKey && <span className="ml-1 text-xs text-gray-500">{pct(perServing, dvKey).toFixed(0)}%</span>}
+      </span>
+    </div>
   )
 }
 
 // PNG 다운로드 대상(DOM 캡처 타깃). id="exportable-nutrition-card"는 상위에서 부여합니다.
 export function NutritionCardPreview({
-  menu, servingWeight, kcal, carbs, protein, fat, sugar, sodium, fiber, showPartnerBadge,
+  menu, servings, servingWeight, totalWeight, per100g, perServing, showPartnerBadge,
 }: {
   menu: string
-  servingWeight: number
-  kcal: number
-  carbs: number
-  protein: number
-  fat: number
-  sugar: number
-  sodium: number
-  fiber: number
+  servings: number
+  servingWeight: number // 1인분 조리 후 중량(g)
+  totalWeight: number // 총 내용량(g) = servingWeight * servings
+  per100g: NutrientSet
+  perServing: NutrientSet
   showPartnerBadge?: boolean
 }) {
-  const sodiumPct = (sodium / DAILY_VALUE.sodium) * 100
-  const sugarPct = (sugar / DAILY_VALUE.sugar) * 100
-
   return (
-    <div className="rounded-2xl border border-border bg-card p-5">
-      <div className="flex items-center justify-between border-b border-border pb-3">
+    <div className="rounded-2xl border-2 border-black bg-white p-5 text-black">
+      <div className="flex items-baseline justify-between border-b-4 border-black pb-2">
         <div>
-          <p className="text-xs text-muted-foreground">자율 영양성분 안내 카드</p>
-          <p className="mt-1 text-lg font-semibold">{menu}</p>
+          <h3 className="text-xl font-black tracking-tight">영양정보</h3>
+          <p className="mt-1 text-xs text-gray-600">{menu}</p>
         </div>
-        <span className="text-xs text-muted-foreground">1회 제공량 약 {Math.round(servingWeight)}g</span>
-      </div>
-
-      <div className="mt-4 rounded-xl bg-primary p-4 text-primary-foreground">
-        <p className="text-xs opacity-80">열량 (Calories)</p>
-        <p className="mt-1 text-2xl font-semibold">{kcal.toFixed(0)} kcal</p>
-      </div>
-
-      <div className="mt-4 flex flex-col gap-3 text-sm">
-        <div className="flex items-center justify-between">
-          <span className="text-muted-foreground">나트륨 (Sodium)</span>
-          <span className="font-medium">{sodium.toFixed(0)}mg <span className="text-xs text-muted-foreground">({sodiumPct.toFixed(0)}%)</span><StatusChip overThreshold={sodium >= WARNING_THRESHOLD.sodium} /></span>
-        </div>
-        <div className="flex items-center justify-between">
-          <span className="text-muted-foreground">탄수화물 (Carbohydrate)</span>
-          <span className="font-medium">{carbs.toFixed(1)}g</span>
-        </div>
-        <div className="flex items-center justify-between pl-3">
-          <span className="text-muted-foreground">– 당류 (Sugars)</span>
-          <span className="font-medium">{sugar.toFixed(1)}g <span className="text-xs text-muted-foreground">({sugarPct.toFixed(0)}%)</span><StatusChip overThreshold={sugar >= WARNING_THRESHOLD.sugar} /></span>
-        </div>
-        <div className="flex items-center justify-between">
-          <span className="text-muted-foreground">지방 (Fat)</span>
-          <span className="font-medium">{fat.toFixed(1)}g</span>
-        </div>
-        <div className="flex items-center justify-between">
-          <span className="text-muted-foreground">단백질 (Protein)</span>
-          <span className="font-medium">{protein.toFixed(1)}g</span>
-        </div>
-        <div className="flex items-center justify-between">
-          <span className="text-muted-foreground">식이섬유</span>
-          <span className="font-medium">{fiber.toFixed(1)}g</span>
+        <div className="text-right">
+          <p className="text-xs text-gray-600">총 내용량 {Math.round(totalWeight)}g ({servings}인분 · 1인분 {Math.round(servingWeight)}g)</p>
+          <p className="text-2xl font-black">{perServing.kcal.toFixed(0)}kcal <span className="text-xs font-normal text-gray-500">/ 1인분</span></p>
         </div>
       </div>
 
-      <p className="mt-4 text-xs text-muted-foreground">* 1일 영양성분 기준치에 대한 비율(%)을 반영하였습니다.</p>
+      <div className="grid grid-cols-[1fr_100px_100px] border-b-2 border-black py-1.5 text-xs font-semibold text-gray-600">
+        <span>1일 영양성분 기준치에 대한 비율(%)</span>
+        <span className="text-right">100g당</span>
+        <span className="text-right">1인분당</span>
+      </div>
+
+      <div className="flex flex-col">
+        <Row label="나트륨" unit="mg" per100g={per100g.sodium} perServing={perServing.sodium} dvKey="sodium" />
+        <Row label="탄수화물" unit="g" per100g={per100g.carbs} perServing={perServing.carbs} dvKey="carbs" />
+        <Row label="당류" indent unit="g" per100g={per100g.sugar} perServing={perServing.sugar} dvKey="sugar" />
+        <Row label="지방" unit="g" per100g={per100g.fat} perServing={perServing.fat} dvKey="fat" />
+        <Row label="트랜스지방" indent unit="g" per100g={per100g.transFat} perServing={perServing.transFat} />
+        <Row label="포화지방" indent unit="g" per100g={per100g.saturatedFat} perServing={perServing.saturatedFat} dvKey="saturatedFat" />
+        <Row label="콜레스테롤" unit="mg" per100g={per100g.cholesterol} perServing={perServing.cholesterol} dvKey="cholesterol" />
+        <Row label="단백질" unit="g" per100g={per100g.protein} perServing={perServing.protein} dvKey="protein" />
+      </div>
+
+      <p className="mt-3 border-t-4 border-black pt-2 text-[11px] leading-4 text-gray-500">
+        1일 영양성분 기준치에 대한 비율(%)은 2,000kcal 기준이므로 개인의 필요 열량에 따라 다를 수 있습니다.
+      </p>
+
       {showPartnerBadge && <div className="mt-3"><PartnerBadge /></div>}
       <DisclaimerBanner />
     </div>

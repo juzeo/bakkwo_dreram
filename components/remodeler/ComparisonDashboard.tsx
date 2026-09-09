@@ -1,4 +1,4 @@
-import { WARNING_THRESHOLD, type MatchedRule, type Track } from '@/lib/nutrition'
+import { WARNING_THRESHOLD, type MatchedRule, type RemodelSelections } from '@/lib/nutrition'
 import { PartnerBadge } from '@/components/common/Badge'
 import { IngredientSubstituteRow } from './IngredientSubstituteRow'
 
@@ -33,16 +33,18 @@ function Panel({ title, tone, kcal, sugar, sodium, children }: {
 export function ComparisonDashboard({
   originalKcal, originalSugar, originalSodium,
   improvedKcal, improvedSugar, improvedSodium,
-  matches, enabledRuleIds, onToggleRule, track,
+  matches, selections, onSelectOption,
 }: {
   originalKcal: number; originalSugar: number; originalSodium: number
   improvedKcal: number; improvedSugar: number; improvedSodium: number
   matches: MatchedRule[]
-  enabledRuleIds: Set<string>
-  onToggleRule: (ruleId: string) => void
-  track: Track
+  selections: RemodelSelections
+  onSelectOption: (ruleId: string, optionId: string | null) => void
 }) {
-  const anyActive = matches.some(m => enabledRuleIds.has(m.rule.id))
+  const anyLocalFarmSelected = matches.some(m => {
+    const optionId = selections[m.rule.id]
+    return m.rule.options.find(o => o.id === optionId)?.category === 'LOCAL_FARM'
+  })
 
   return (
     <div className="grid gap-5 lg:grid-cols-2">
@@ -59,13 +61,13 @@ export function ComparisonDashboard({
         {matches.map(({ rule, matchedItem }) => (
           <IngredientSubstituteRow
             key={rule.id}
-            matchedItemName={matchedItem.name}
-            option={rule[track]}
-            active={enabledRuleIds.has(rule.id)}
-            onChange={() => onToggleRule(rule.id)}
+            matchedItem={matchedItem}
+            rule={rule}
+            selectedOptionId={selections[rule.id] ?? null}
+            onSelect={optionId => onSelectOption(rule.id, optionId)}
           />
         ))}
-        {track === 'LOCAL_FARM' && anyActive && <div className="pt-1"><PartnerBadge /></div>}
+        {anyLocalFarmSelected && <div className="pt-1"><PartnerBadge /></div>}
       </Panel>
     </div>
   )

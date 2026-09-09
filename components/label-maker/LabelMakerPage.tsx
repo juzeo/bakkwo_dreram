@@ -5,7 +5,7 @@ import { GNB } from '@/components/common/GNB'
 import { NutritionCardPreview } from '@/components/export/NutritionCardPreview'
 import { ExportActionBar } from '@/components/export/ExportActionBar'
 import { calcNutrition, type CookingMethodCode, type FoodItem, type Ingredient } from '@/lib/nutrition'
-import { toIngredient, saveHandoff, readSavedRecipes, writeSavedRecipes, type SavedRecipeEntry, type MenuTemplate } from '@/lib/mockData'
+import { toIngredient, saveHandoff, readSavedRecipes, writeSavedRecipes, MOCK_FOODS, type SavedRecipeEntry, type MenuTemplate } from '@/lib/mockData'
 import { buildNutritionExportText } from '@/lib/export'
 import { RecipeHeaderForm } from './RecipeHeaderForm'
 import { IngredientTable } from './IngredientTable'
@@ -16,15 +16,15 @@ export function LabelMakerPage() {
   const [menu, setMenu] = useState('닭가슴살 간장 덮밥')
   const [servings, setServings] = useState(1)
   const [defaultMethod, setDefaultMethod] = useState<CookingMethodCode>('STIR')
-  const [added, setAdded] = useState<Ingredient[]>([
-    toIngredient({ food_id: 1103, food_group: '육류', name: '닭가슴살', kcal: 165, protein: 31, carbs: 0, fat: 3.6, sugar: 0, sodium: 74, fiber: 0 }, 120, 'STIR'),
-    toIngredient({ food_id: 352, food_group: '조미료류', name: '진간장', kcal: 53, protein: 5.2, carbs: 5.6, fat: 0.1, sugar: 0.9, sodium: 5493, fiber: 0 }, 12, 'STIR'),
-    toIngredient({ food_id: 906, food_group: '채소류', name: '양파', kcal: 40, protein: 1.1, carbs: 9.3, fat: 0.1, sugar: 4.2, sodium: 4, fiber: 1.7 }, 50, 'STIR'),
+  const [added, setAdded] = useState<Ingredient[]>(() => [
+    toIngredient(MOCK_FOODS.find(f => f.food_id === 1103)!, 120, 'STIR'),
+    toIngredient(MOCK_FOODS.find(f => f.food_id === 352)!, 12, 'STIR'),
+    toIngredient(MOCK_FOODS.find(f => f.food_id === 906)!, 50, 'STIR'),
   ])
   const [searchOpen, setSearchOpen] = useState(false)
   const [justSaved, setJustSaved] = useState(false)
 
-  const { perServing, cookedWeightPerServing, rawWeight, warnings } = calcNutrition(added, servings)
+  const { perServing, per100g, cookedWeightPerServing, rawWeight, warnings } = calcNutrition(added, servings)
 
   const loadTemplate = (tpl: MenuTemplate) => {
     setMenu(tpl.menu_name)
@@ -97,14 +97,11 @@ export function LabelMakerPage() {
           <div id="exportable-nutrition-card">
             <NutritionCardPreview
               menu={menu}
+              servings={servings}
               servingWeight={cookedWeightPerServing}
-              kcal={perServing.kcal}
-              carbs={perServing.carbs}
-              protein={perServing.protein}
-              fat={perServing.fat}
-              sugar={perServing.sugar}
-              sodium={perServing.sodium}
-              fiber={perServing.fiber}
+              totalWeight={cookedWeightPerServing * servings}
+              per100g={per100g}
+              perServing={perServing}
             />
           </div>
         </div>
